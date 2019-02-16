@@ -1,0 +1,623 @@
+#function starts here
+Mixture_TPR_extreme <- function (NN, population_size_divider, NN_step, pop_total, save_population_data, save_sample_data, save_analysis_results, extreme_value_flexibility) {
+	library('MASS')
+	
+	#This assigns name based on the user's response
+	if (extreme_value_flexibility == 1) {
+		Xtre_value = " for HIGH Extreme Maximum Value (HEMaV) Analysis"
+	} else {
+		Xtre_value = " for LOW Extreme Maximum Value (LEMaV) Analysis"
+	}
+	
+	#This will only initialize "exit_loop_alert"
+	exit_loop_alert <- 0
+	
+	#This prepares vector holder for data to be pooled together
+	data_columns_parameter1 <- vector("list", pop_total)
+	data_columns_parameter2 <- vector("list", pop_total)
+	data_columns_parameter3 <- vector("list", pop_total)
+	
+  #Population size (NN) and step to make up for 16 populations will be supplied by the user
+  for (i in c(1: pop_total )) {
+    #Set the first and second phase sample sizes
+    
+	NN_divider <- round(population_size_divider)
+	
+	#Begin: This does not allow the script to crash if the population is small for subsequent analysis. It automatocally allocate NN and n1
+	if ((NN < 0) || ((NN/NN_divider) < 10)) {
+		NN <- 60
+		n1 <- 20
+		exit_loop_alert <- 1
+	} else {
+		n1 <- round(NN/NN_divider)
+		}
+	#Begin: This does not allow the script to crash if the population is small for subsequent analysis. It automatocally allocate NN and n1
+    
+	#begin==================================================================
+    #simulate population data of Variable
+    #===For Ratio Estimator===
+	#Population data for the auxiliary variable
+	set.seed <- 0
+    set.seed <- round(sample(200:200000, 1))
+	
+	set_correlation <- 0.99
+	data = mvrnorm(n=NN, mu=c(150, 350), Sigma=matrix(c(1, set_correlation, set_correlation, 1), nrow=2), empirical=TRUE)
+	X1 = round(data[, 1])  # standard normal (mu=150, sd=1)
+	YY = round(data[, 2])  # standard normal (mu=350, sd=1)
+	YY_original <- YY
+	X1_original <- X1
+	#end==================================================================
+	
+	#begin==================================================================
+	    
+	#Setting the first maximum value in Y
+	set.seed <- 0
+	set.seed <- round(sample(200000:1000000, 1))
+    YY_max_position <- sample(1:NN, 1)
+	set.seed <- 0
+	set.seed <- round(sample(500000:2000000, 1))
+	
+	#This will set the flexibility of the extreme value in YY
+	if (extreme_value_flexibility == 1) {		#1: This will generate HIGH extreme value
+		YY[YY_max_position] <- round(sample(100000:200000, 1))
+	} else {		#any value outside 1: This assumes moderate
+		YY[YY_max_position] <- round(sample(800:850, 1))
+	}
+    
+	YY_max_value <- YY[YY_max_position]
+	YY_new <- YY				#If this is not done, it will not see the YY_max_value in the previous YY		
+	#end==================================================================
+	
+	#begin==================================================================
+	#Setting the first maximum value in X1
+	set.seed <- 0
+	set.seed <- round(sample(500000:2000000, 1))
+    X1_max_position_1 <- sample(1:NN, 1)
+	set.seed <- 0
+	set.seed <- round(sample(500000:2000000, 1))
+	
+	#This will set the flexibility of the extreme value in YY
+	if (extreme_value_flexibility == 1) {		#1: High
+		X1[X1_max_position_1] <- round(sample(10000:20000, 1))
+	} else {		#any value outside 1: Moderate   and else will assume moderate
+		X1[X1_max_position_1] <- round(sample(550:570, 1))
+	}
+	
+    X1_max_value_1 <- X1[X1_max_position_1]
+	X1_new <- X1		#If this is not done, it will not see the X1_max_value_1 in the previous X1		
+	
+	#end==================================================================
+
+	#begin==================================================================
+	#Sample for the auxiliary variable X1
+	set.seed <- 0
+	set.seed <- round(sample(500000:2000000, 1))
+    x11 <- sample(X1, n1)
+	x11_original <- x11
+	
+	#Sample for the auxiliary variable YY
+	set.seed <- 0
+	set.seed <- round(sample(500000:2000000, 1))
+    yy <- sample(YY, n1)
+	yy_original <- yy
+	#end==================================================================
+	
+	#begin==================================================================
+	#This test for the presence of X1_max_value_1 in x11 and adds if it is not there in the sampled dataset
+	X1_max_value_1_is_present = 0
+	for (j1 in 1:n1)
+	{
+		if (x11[j1] == X1_max_value_1) {
+			#if X1_max_value_1 is present in the dataset, make confirm its presence
+			X1_max_value_1_is_present <- 1
+		}
+		if ((j1 == n1) && (X1_max_value_1_is_present == "0")) {
+			set.seed <- 0
+			set.seed <- round(sample(5:2000000, 1))
+			x_1st <- sample(1:n1, 1)
+			x11[x_1st] <- X1_max_value_1
+			#x11_new <- x11					#If this is not done, it will not see the X1_max_value_1 in the previous x11
+		}
+	}
+	x11_new <- x11					#If this is not done, it will not see the X1_max_value_1 in the previous x11
+	x11_new_min <- min(x11_new)
+	x11_new_max <- max(x11_new)
+	X1_max_value_1_is_present = 0
+	
+	#end==================================================================
+	
+	#begin==================================================================
+	#This test for the presence of YY_max_value in yy and adds if it is not there in the sampled dataset
+	yy_max_value_1_is_present = 0
+	for (k1 in 1:n1)
+	{
+		if (yy[k1] == YY_max_value) {
+			yy_max_value_1_is_present <- 1
+		}
+		if ((k1 == n1) && (yy_max_value_1_is_present != "1")) {
+			set.seed <- 0
+			set.seed <- round(sample(1:2000000, 1))
+			yy[sample(1:n1, 1)] <- YY_max_value
+			yy_new <- yy					#If this is not done, it will not see the YY_max_value in the previous x11
+		}
+	}
+	#After testing for the presence of YY_max_value, if it is not present then add it
+	yy_new <- yy				#If this is not done, it will not see the YY_max_value in the previous x11
+	yy_new_min <- min(yy_new)
+	yy_new_max <- max(yy_new)
+	yy_max_value_1_is_present = 0
+	
+	#end==================================================================
+	
+	#begin==================================================================
+	YY_new_mean <- round(mean(YY_new), digit=4)
+	yy_new_mean <-  round(mean (yy_new), digit=4)
+	X1_new_mean <- round(mean(X1_new), digit=4)
+	x11_new_mean <- round(mean(x11_new), digit=4)
+	c0 <- round(((max(yy_new)-min(yy_new)))/(2*n1), digit=4)			#maximum value of yy_new
+	c0_Max <- round(((max(yy_new)-min(yy_new)))/(n1), digit=4)			#maximum value of yy_new
+	c1 <- round(((max(x11_new)-min(x11_new)))/(2*n1), digit=4)			#maximum value of x11_new
+	c1_Max <- round(((max(x11_new)-min(x11_new)))/(n1), digit=4)			#maximum value of x11_new
+	X_max <- max(X1_new)		#maximum value of X1_new
+	bbita <- cov(yy_new , x11_new)/(var(x11_new ))		#regression cccoefficient of yy on x11
+	CV_YY_mean <- round(sd(YY_new)/mean(YY_new), digit=4)
+	cor_YX <- round(cor(YY_new, X1_new, method = "pearson"), digit=4)
+	
+	tita <- (1/n1)-(1/NN)
+	x11_new_var <- var(x11_new)
+	yy_new_var <- var(yy_new)
+	SD_yy <- sd(yy_new)
+	SD_x1 <- sd(x11_new)
+	change_in_y <- (max(yy_new))-(min(yy_new))
+	change_in_x <- (max(x11_new))-(min(x11_new))
+	cor_yx <-  round(cor(yy_new, x11_new, method = "pearson"), digit=8)
+	cor_yx_square <- cor_yx^2
+		
+	alpha_1 <- YY_new_mean/(X1_new_mean+ X_max)
+	alpha_2 <- (YY_new_mean*CV_YY_mean)/((X1_new_mean*CV_YY_mean)+ X_max)
+	alpha_3 <- (YY_new_mean*cor_YX)/((X1_new_mean*cor_YX)+ X_max)
+	
+	e_1 <- ((tita*n1*alpha_1)/(YY_new_mean*(NN-1)))*(2*c1*(alpha_1+bbita)*(change_in_x -(n1*c1))-((c1*change_in_y)+(c0*change_in_x)-(2*n1*c0*c1)))
+	e_2 <- ((tita*n1*alpha_2)/(YY_new_mean*(NN-1)))*(2*c1*(alpha_2+bbita)*(change_in_x -(n1*c1))-((c1*change_in_y)+(c0*change_in_x)-(2*n1*c0*c1)))
+	e_3 <- ((tita*n1*alpha_3)/(YY_new_mean*(NN-1)))*(2*c1*(alpha_3+bbita)*(change_in_x -(n1*c1))-((c1*change_in_y)+(c0*change_in_x)-(2*n1*c0*c1)))
+	
+	gamma_1 <- ((2*n1*tita)/(NN-1))*((c0*(change_in_y-(n1*c0)))-((alpha_1+bbita)*((c1*change_in_y)+(c0*change_in_x)-(2*n1*c0*c1)))+(c1*(change_in_x-(n1*c1))*((alpha_1^2)+(2*alpha_1*bbita)+(bbita^2))))
+	gamma_2 <- ((2*n1*tita)/(NN-1))*((c0*(change_in_y-(n1*c0)))-((alpha_2+bbita)*((c1*change_in_y)+(c0*change_in_x)-(2*n1*c0*c1)))+(c1*(change_in_x-(n1*c1))*((alpha_2^2)+(2*alpha_2*bbita)+(bbita^2))))
+	gamma_3 <- ((2*n1*tita)/(NN-1))*((c0*(change_in_y-(n1*c0)))-((alpha_3+bbita)*((c1*change_in_y)+(c0*change_in_x)-(2*n1*c0*c1)))+(c1*(change_in_x-(n1*c1))*((alpha_3^2)+(2*alpha_3*bbita)+(bbita^2))))
+	#end==================================================================
+	
+	#begin==================================================================
+	conventional_regression_sample_mean <- 	round((yy_new_mean + (bbita*(X1_new_mean-x11_new_mean))), digit=4)
+	conventional_ratio_sample_mean <- round((yy_new_mean*X1_new_mean/x11_new_mean), digit=4)
+	conventional_product_sample_mean <- round((yy_new_mean*x11_new_mean/X1_new_mean), digit=4)
+	
+	#Computation of the sample mean for the three estimators of Abbas and the three proposed estimators
+	sample_mean_abbas_1 <- round(((yy_new_mean+(bbita*(X1_new_mean-x11_new_mean)))*(X1_new_mean+ X_max)/(x11_new_mean+ X_max)), digit=4)
+	sample_mean_abbas_2 <- round(((yy_new_mean+(bbita*(X1_new_mean-x11_new_mean)))*((X1_new_mean*CV_YY_mean)+ X_max)/((x11_new_mean*CV_YY_mean)+ X_max)), digit=4)
+	sample_mean_abbas_3 <- round(((yy_new_mean+(bbita*(X1_new_mean-x11_new_mean)))*((X1_new_mean*cor_YX)+ X_max)/((x11_new_mean*cor_YX)+ X_max)), digit=4)
+	
+	sample_mean_1 <- round(((((yy_new_mean - c0)+(bbita*(X1_new_mean-(x11_new_mean - c1))))*(X1_new_mean + X_max))/((x11_new_mean - c1)+ X_max)), digit=4)
+	#sample_mean_1* <- round((((yy_new_mean-c0)+(bbita*(X1_new_mean-(x11_new_mean-c1))))*(X1_new_mean+ X_max)/((x11_new_mean-c1)+ X_max)), digit=4)
+	sample_mean_2 <- round(((((yy_new_mean - c0)+(bbita*(X1_new_mean-(x11_new_mean - c1))))*((X1_new_mean*CV_YY_mean) + X_max))/(((x11_new_mean - c1)*CV_YY_mean)+ X_max)), digit=4)
+	sample_mean_3 <- round(((((yy_new_mean - c0)+(bbita*(X1_new_mean-(x11_new_mean - c1))))*((X1_new_mean*cor_YX) + X_max))/(((x11_new_mean - c1)*cor_YX)+ X_max)), digit=4)
+	
+	#Computation of the bias of the sample mean for the three estimators of Abbas and the three proposed estimators
+	bias_sample_mean_abbas_1 <- round(((tita*(alpha_1^2)*x11_new_var)/ YY_new_mean), digit=12)
+	bias_sample_mean_abbas_2 <- round(((tita*(alpha_2^2)*x11_new_var)/ YY_new_mean), digit=12)
+	bias_sample_mean_abbas_3 <- round(((tita*(alpha_3^2)*x11_new_var)/ YY_new_mean), digit=12)
+	
+	bias_sample_mean_1 <- round((bias_sample_mean_abbas_1 - e_1), digit=12)
+	bias_sample_mean_2 <- round((bias_sample_mean_abbas_2 - e_2), digit=12)
+	bias_sample_mean_3 <- round((bias_sample_mean_abbas_3 - e_3), digit=12)
+	
+	#Computation of the MSE of the sample mean for the three estimators of Abbas and the three proposed estimators
+	MSE_sample_mean_abbas_1 <- round((tita*(((alpha_1^2)*x11_new_var)+(yy_new_var*(1-cor_yx^2)))), digit=4)
+	MSE_sample_mean_abbas_2 <- round((tita*(((alpha_2^2)*x11_new_var)+(yy_new_var*(1-cor_yx^2)))), digit=4)
+	MSE_sample_mean_abbas_3 <- round((tita*(((alpha_3^2)*x11_new_var)+(yy_new_var*(1-cor_yx^2)))), digit=4)
+	
+	MSE_sample_mean_1 <- round((MSE_sample_mean_abbas_1 - gamma_1), digit=4)
+	MSE_sample_mean_2 <- round((MSE_sample_mean_abbas_2 - gamma_2), digit=4)
+	MSE_sample_mean_3 <- round((MSE_sample_mean_abbas_3 - gamma_3), digit=4)
+	
+	#Computation of the variance of the sample mean for the three estimators of Abbas and the three proposed estimators
+	variance_sample_mean_abbas_1 <- round(MSE_sample_mean_abbas_1 - (bias_sample_mean_abbas_1^2), digit=4)
+	variance_sample_mean_abbas_2 <- round(MSE_sample_mean_abbas_2 - (bias_sample_mean_abbas_2^2), digit=4)
+	variance_sample_mean_abbas_3 <- round(MSE_sample_mean_abbas_3 - (bias_sample_mean_abbas_3^2), digit=4)
+	
+	variance_sample_mean_1 <- round(MSE_sample_mean_1 - (bias_sample_mean_1^2), digit=4)
+	variance_sample_mean_2 <- round(MSE_sample_mean_2 - (bias_sample_mean_2^2), digit=4)
+	variance_sample_mean_3 <- round(MSE_sample_mean_3 - (bias_sample_mean_3^2), digit=4)
+	
+	#Computation of the Relative Efficiency of the three proposed estimators
+	RE_mean_1_to_mean_2	<- round((MSE_sample_mean_2/MSE_sample_mean_1)*100 , digit=4)
+	RE_mean_1_to_mean_3	<- round((MSE_sample_mean_3/MSE_sample_mean_1)*100 , digit=4)
+	RE_mean_2_to_mean_3	<- round((MSE_sample_mean_2/MSE_sample_mean_3)*100 , digit=4)
+	
+	#Computation of the Relative Efficiency of the three estimators of Abbas with the three proposed estimators
+	RE_mean_1_to_Abbas_1	<- round((MSE_sample_mean_abbas_1/MSE_sample_mean_1)*100 , digit=4)
+	RE_mean_1_to_Abbas_2	<- round((MSE_sample_mean_abbas_2/MSE_sample_mean_1)*100 , digit=4)
+	RE_mean_1_to_Abbas_3	<- round((MSE_sample_mean_abbas_3/MSE_sample_mean_1)*100 , digit=4)
+	
+	RE_mean_2_to_Abbas_1	<- round((MSE_sample_mean_abbas_1/MSE_sample_mean_2)*100 , digit=4)
+	RE_mean_2_to_Abbas_2	<- round((MSE_sample_mean_abbas_2/MSE_sample_mean_2)*100 , digit=4)
+	RE_mean_2_to_Abbas_3	<- round((MSE_sample_mean_abbas_3/MSE_sample_mean_2)*100 , digit=4)
+	
+	RE_mean_3_to_Abbas_1	<- round((MSE_sample_mean_abbas_1/MSE_sample_mean_3)*100 , digit=4)
+	RE_mean_3_to_Abbas_2	<- round((MSE_sample_mean_abbas_2/MSE_sample_mean_3)*100 , digit=4)
+	RE_mean_3_to_Abbas_3	<- round((MSE_sample_mean_abbas_3/MSE_sample_mean_3)*100 , digit=4)
+	#end==================================================================
+	
+	#begin==================================================================
+	#This will create different dataframes for data and analysis documentation
+	
+	#This collates all the population data
+	population_data_df <- data.frame ( YY_original, X1_original, YY_new, X1_new )
+	
+	#This collates all the sample data
+	sample_data_df <- data.frame ( yy_original, x11_original, yy_new, x11_new )
+	
+	#This collates all the necessary computed assisting variables/parameters
+	q1 <- 29
+	analysis_result_df <- data.frame (
+		S_no = c(1:q1),
+
+		Parameter_title1 = c("Pop_Size" ,"Sample_Size","tita", "Min_y", "Max_y", "Min_x", "Max_x","C0", "C0_Max", "C1", "C1_Max", "yy_new_mean", "x11_new_mean", "cor_yx", "cor_YX", "CV_YY" , "SD_yy", "SD_x1", "YY_mean", "X1_mean", "alpha_1", "alpha_2", "alpha_3", "Epsilon_1", "Epsilon_2", "Epsilon_3", "gamma_1", "gamma_2", "gamma_3"),
+		Parameter_Values1 = c(NN ,n1,tita, yy_new_min, yy_new_max, x11_new_min, x11_new_max, c0, c0_Max, c1, c1_Max, yy_new_mean, x11_new_mean, cor_yx, cor_YX, CV_YY_mean , SD_yy, SD_x1, YY_new_mean, X1_new_mean, alpha_1, alpha_2, alpha_3, e_1, e_2, e_3, gamma_1, gamma_2, gamma_3),
+
+		estimator_title = c("Bias_y1" ,"Bias_y2","Bias_y3", "MSE_y1", "MSE_y2", "MSE_y3", "Var_y1","Var_y2", "Var_y3", "Bias_y1", "Bias_yp1", "Bias_y2", "Bias_yp2", "Bias_y3", "Bias_yp3", "MSE_y1", "MSE_yp1", "MSE_y2", "MSE_yp2", "MSE_y3", "MSE_yp3", "Var_y1", "Var_yp1", "Var_y2", "Var_yp2", "Var_y3", "Var_yp3", "  ___", " ___"),
+		estimates = c(bias_sample_mean_1 ,bias_sample_mean_2,bias_sample_mean_3, MSE_sample_mean_1, MSE_sample_mean_2, MSE_sample_mean_3, variance_sample_mean_1,variance_sample_mean_2, variance_sample_mean_3, bias_sample_mean_1, bias_sample_mean_abbas_1, bias_sample_mean_2, bias_sample_mean_abbas_2, bias_sample_mean_3, bias_sample_mean_abbas_3, MSE_sample_mean_1, MSE_sample_mean_abbas_1, MSE_sample_mean_2, MSE_sample_mean_abbas_2, MSE_sample_mean_3, MSE_sample_mean_abbas_3, variance_sample_mean_1, variance_sample_mean_abbas_1, variance_sample_mean_2, variance_sample_mean_abbas_2, variance_sample_mean_3, variance_sample_mean_abbas_3, "  ___", " ___"),
+		
+		Parameter_title2 = c("RE(y1/y2)" ,"RE(y1/y3)","RE(y2/y3)", "RE(y1/yp1)", "RE(y1/yp2)", "RE(y1/yp3)", "RE(y2/yp1)","RE(y2/yp2)", "RE(y2/yp3)", "RE(y3/yp1)", "RE(y3/yp2)", "RE(y3/yp3)" ," ___", " ___", "Abbas sample_mean 1", "Proposed sample mean 1", "Abbas sample_mean 2", "Proposed sample mean 2", "Abbas sample_mean 3", "Proposed sample mean 3", "Convention Regression sample mean", " Convention Ratio sample mean", "Convention Product sample mean", " ___", " ___", " ___", " ___", "  ___", " ___"),
+		Parameter_Values2 = c(RE_mean_1_to_mean_2,RE_mean_1_to_mean_3, RE_mean_2_to_mean_3, RE_mean_1_to_Abbas_1, RE_mean_1_to_Abbas_2, RE_mean_1_to_Abbas_3,RE_mean_2_to_Abbas_1, RE_mean_2_to_Abbas_2, RE_mean_2_to_Abbas_3, RE_mean_3_to_Abbas_1, RE_mean_3_to_Abbas_2 , RE_mean_3_to_Abbas_3, "  ___", " ___", sample_mean_abbas_1, sample_mean_1, sample_mean_abbas_2, sample_mean_2, sample_mean_abbas_3, sample_mean_3, conventional_regression_sample_mean, conventional_ratio_sample_mean, conventional_product_sample_mean, " ___", " ___", " ___", " ___", "  ___", " ___"),
+
+		stringsAsFactors = FALSE
+	)
+	
+	#begin: This will prepare list for the compilation and saving of the population parameter 1 for not more than 50 populations========================
+	data_columns_parameter1[[i]] <- analysis_result_df$Parameter_Values1
+	pop_parameter <- unlist (data_columns_parameter1)
+	#end: This will prepare list for the compilation and saving of the population parameter 1 for not more than 50 populations========================
+	
+	#begin: This will prepare list for the compilation and saving of the population estimates for not more than 50 populations========================
+	data_columns_parameter2[[i]] <- analysis_result_df$estimates
+	pop_parameter2 <- unlist (data_columns_parameter2)
+	#end: This will prepare list for the compilation and saving of the population estimates for not more than 50 populations========================
+	
+	#begin: This will prepare list for the compilation and saving of the population parameter 2 for not more than 50 populations========================
+	data_columns_parameter3[[i]] <- analysis_result_df$Parameter_Values2
+	pop_parameter3 <- unlist (data_columns_parameter3)
+	#end: This will prepare list for the compilation and saving of the population parameter 2 for not more than 50 populations========================
+	
+	#begin==================================================================
+	if (save_population_data == 1) {		#1 = only save "population_data_df" as csv file
+		csvfile <- paste ("population_data",i, c(Xtre_value),".csv")
+		write.csv(population_data_df, file=csvfile, append = TRUE, fileEncoding = "UTF-16LE")
+		
+		print(paste ("You only requested to save POPULATION DATA for poplulation", i, c(Xtre_value)) )
+		print(paste ("   ") )
+		}
+		else {
+			if (save_population_data == 2) {	#2 = only screen print "population_data_df" as csv file
+				print (population_data_df)
+				print(paste ("You only requested to screen print POPULATION DATA for poplulation", i, c(Xtre_value)) )
+				print(paste ("   ") )
+				}
+				else {
+					if (save_population_data == 3) {	#3 = both save and screen print "population_data_df" as csv file
+							csvfile <- paste ("population_data",i, c(Xtre_value),".csv")
+							write.csv(population_data_df, file=csvfile, append = TRUE, fileEncoding = "UTF-16LE")
+							print (population_data_df)
+							
+							print(paste ("You requested to save and screen print POPULATION DATA for poplulation", i, c(Xtre_value)) )
+							print(paste ("   ") )
+						}
+						else {
+								print(paste ("You did not request to save nor screen print POPULATION DATA for poplulation", i, c(Xtre_value)) )
+								print(paste ("   ") )
+							}
+					}
+			}
+			
+	if (save_sample_data == 1) {		#1 = only save "sample_data_df" as csv file
+		csvfile <- paste ("sample_data",i, c(Xtre_value),".csv")
+		write.csv(sample_data_df, file=csvfile, append = TRUE, fileEncoding = "UTF-16LE")
+		
+		print(paste ("You only requested to save SAMPLE DATA for poplulation", i, c(Xtre_value)) )
+		}
+		else {
+			if (save_sample_data == 2) {	#2 = only screen print "sample_data_df" as csv file
+				print (sample_data_df)
+				print(paste ("You only requested to screen print SAMPLE DATA for poplulation", i, c(Xtre_value)) )
+				}
+				else {
+					if (save_sample_data == 3) {	#3 = both save and screen print "sample_data_df" as csv file
+							csvfile <- paste ("sample_data",i, c(Xtre_value),".csv")
+							write.csv(sample_data_df, file=csvfile, append = TRUE, fileEncoding = "UTF-16LE")
+							print (sample_data_df)
+							
+							print(paste ("You requested to save and screen print SAMPLE DATA for poplulation", i, c(Xtre_value)) )
+						}
+						else {
+								print(paste ("You did not request to save nor screen print SAMPLE DATA for poplulation", i, c(Xtre_value)) )
+							}
+					}
+			}		
+			
+	if (save_analysis_results == 1) {		#1 = only save "population_data_df" as csv file
+		csvfile <- paste ("analysis_results",i, c(Xtre_value),".csv")
+		write.csv(analysis_result_df, file=csvfile, append = TRUE, fileEncoding = "UTF-16LE")
+		
+		print(paste ("You only requested to save ANALYIS RESULTS for poplulation", i, c(Xtre_value)) )
+		}
+		else {
+			if (save_analysis_results == 2) {	#2 = only screen print "population_data_df" as csv file
+				print (analysis_result_df)
+				print(paste ("You only requested to screen print ANALYIS RESULTS for poplulation", i, c(Xtre_value)) )
+				}
+				else {
+					if (save_analysis_results == 3) {	#3 = both save and screen print "population_data_df" as csv file
+							csvfile <- paste ("analysis_results",i, c(Xtre_value),".csv")
+							write.csv(analysis_result_df, file=csvfile, append = TRUE, fileEncoding = "UTF-16LE")
+							print (analysis_result_df)
+							
+							print(paste ("You requested to save and screen print ANALYIS RESULTS for poplulation", i, c(Xtre_value)) )
+						}
+						else {
+								print(paste ("You did not request to save nor screen print ANALYIS RESULTS for poplulation", i, c(Xtre_value)) )
+							}
+					}
+			}
+	#end==================================================================
+	
+	#Begin: This does not allow the script to crash if the population is small for subsequent analysis
+	if (exit_loop_alert == 1) {
+		exit_loop_alert <- 0
+		print (paste("##########The analysis can only stop at ", i, " interation because the population size is small for further analysis.############"))
+		break;		
+	}
+	#End: This does not allow the script to crash if the population is small for subsequent analysis
+		
+	NN = NN - NN_step
+	
+	
+	#begin:===============================================================
+		
+  }
+ 
+ #begin: This will compile and save the population parameter 1for not more than 50 populations========================
+	Parameter_title1 = c("Pop_Size" ,"Sample_Size","tita", "Min_y", "Max_y", "Min_x", "Max_x","C0", "C0_Max", "C1", "C1_Max", "yy_new_mean", "x11_new_mean", "cor_yx", "cor_YX", "CV_YY" , "SD_yy", "SD_x1", "YY_mean", "X1_mean", "alpha_1", "alpha_2", "alpha_3", "Epsilon_1", "Epsilon_2", "Epsilon_3", "gamma_1", "gamma_2", "gamma_3")
+	
+	d1 <- 1
+		
+	combined_data_columns1_df <- data.frame (
+	Parameter_title1, 
+	pop_parameter[c(d1:q1)], 
+	pop_parameter[c(((d1*q1)+1):((d2<-(d1+1))*q1))], 
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))]
+	
+	)
+	
+	#com_para <- paste ("combined_parameter1.csv")
+	write.csv(combined_data_columns1_df, file="computed_parameter1.csv", append = TRUE, fileEncoding = "UTF-16LE")
+#end: This will compile and save the population parameter 1 for not more than 50 populations========================
+  
+  #begin: This will compile and save the population estimates for not more than 50 populations========================
+	Parameter_title2 = c("Bias_y1" ,"Bias_y2","Bias_y3", "MSE_y1", "MSE_y2", "MSE_y3", "Var_y1","Var_y2", "Var_y3", "Bias_y1", "Bias_yp1", "Bias_y2", "Bias_yp2", "Bias_y3", "Bias_yp3", "MSE_y1", "MSE_yp1", "MSE_y2", "MSE_yp2", "MSE_y3", "MSE_yp3", "Var_y1", "Var_yp1", "Var_y2", "Var_yp2", "Var_y3", "Var_yp3", "  ___", " ___")
+	
+	d1 <- 1
+	
+	combined_data_columns2_df <- data.frame (
+	Parameter_title2,
+	pop_parameter2[c(d1:q1)], 
+	pop_parameter2[c(((d1*q1)+1):((d2<-(d1+1))*q1))], 
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter2[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))]
+	
+	)
+	
+	#com_para <- paste ("combined_parameter1.csv")
+	write.csv(combined_data_columns2_df, file="MSE_Var_Bias.csv", append = TRUE, fileEncoding = "UTF-16LE")
+#end: This will compile and save the population estimates for not more than 50 populations========================
+  
+  #begin: This will compile and save the population parameter 2 for not more than 50 populations========================
+	Parameter_title3 = c("RE(y1/y2)" ,"RE(y1/y3)","RE(y2/y3)", "RE(y1/yp1)", "RE(y1/yp2)", "RE(y1/yp3)", "RE(y2/yp1)","RE(y2/yp2)", "RE(y2/yp3)", "RE(y3/yp1)", "RE(y3/yp2)", "RE(y3/yp3)" ," ___", " ___", "Abbas sample_mean 1", "Proposed sample mean 1", "Abbas sample_mean 2", "Proposed sample mean 2", "Abbas sample_mean 3", "Proposed sample mean 3", "Convention Regression sample mean", " Convention Ratio sample mean", "Convention Product sample mean", " ___", " ___", " ___", " ___", "  ___", " ___")
+	
+	d1 <- 1
+	
+	combined_data_columns3_df <- data.frame (
+	Parameter_title3,
+	pop_parameter3[c(d1:q1)], 
+	pop_parameter3[c(((d1*q1)+1):((d2<-(d1+1))*q1))], 
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))],
+	pop_parameter3[c((((d1<-d1+1)*q1)+1):((d2<-(d2+1))*q1))]
+	
+	)
+	
+
+	write.csv(combined_data_columns3_df, file="Relative_efficiency.csv", append = TRUE, fileEncoding = "UTF-16LE")
+#end: This will compile and save the population parameter 2 for not more than 50 populations========================
+  
+  }
+  
+ 
+#################3#READ ME INSTRUCTION
+#NN:							This is the starting population size
+#population_size_divider:		This value will divide NN to obtain sample size i.e. n = NN/population_size_divider
+#NN_step:						This is the difference between one population size and the next population size
+#pop_total: 					This is the total nummber of time you want the process to be repeated
+#save_population_data: 1= 		To save to population data, 2=To print the data on the screen, 3=Both screen print and save data
+#save_sample_data: 1= 			To save to sample data, 2=To print the data on the screen, 3=Both screen print and save data
+#save_analysis_results: 1= 		To save to analysis result, 2=To print the result on the screen, 3=Both screen print and save result
+#extreme_value_flexibility:1= 	This will generate HIGH extreme value into variables Y and X. Any value outside 1 will generate LOW extreme value
+
+
+Mixture_TPR_extreme( NN=5000, population_size_divider=3, NN_step=200, pop_total=30, save_population_data=4, save_sample_data=4, save_analysis_results=4, extreme_value_flexibility = 1 )
